@@ -2,6 +2,7 @@
 
 namespace Cloudladder\Http;
 
+use Cloudladder\Http\Metadata\MetadataManager;
 use GuzzleHttp\Client as GuzzleHttpClient;
 use GuzzleHttp\RequestOptions;
 
@@ -9,23 +10,29 @@ class Client extends GuzzleHttpClient
 {
     public function __construct(array $config = [])
     {
+        // metadata
         $config[RequestOptions::HEADERS] = $this->passMetaData($config[RequestOptions::HEADERS] ?? []);
+        // user-agent
+        $config[RequestOptions::HEADERS] = $this->setUserAgent($config[RequestOptions::HEADERS] ?? []);
         parent::__construct($config);
     }
 
     // 透传metadata
     protected function passMetaData(array $header): array
     {
-        // 只考虑在laravel框架中使用
-        if (!function_exists("request")) {
-            return $header;
+        $allMetadata = MetadataManager::getAllMetadata();
+        foreach($allMetadata as $key => $value) {
+            if (!empty($value)) {
+                $header[$key] = $value;
+            }
         }
 
-        foreach(Metadata::Keys as  $metadataKey) {
-           if (request()->hasHeader($metadataKey)) {
-               $header[$metadataKey] = request()->header($metadataKey);
-           }
-        }
+        return $header;
+    }
+
+    private function setUserAgent(array $header): array
+    {
+        $header['User-Agent'] = "Cloudladder/Http";
 
         return $header;
     }
